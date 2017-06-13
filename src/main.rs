@@ -1,31 +1,42 @@
-extern crate rand;
+extern crate hyper;
+extern crate hyper_tls;
+extern crate futures;
+extern crate tokio_core;
 
-use rand::Rng;
-use std::cmp::Ordering;
+use tokio_core::reactor::Core;
+use futures::{Future, Stream};
+use futures::future;
+
+use hyper::{Uri, Method, Error};
+use hyper::client::{Client, Request};
+use hyper::header::{Authorization, Accept, UserAgent, qitem};
+use hyper::mime::Mime;
+use hyper_tls::HttpsConnector;
+
+use std::io::{self, Read, Write};
+
+use std::str::FromStr;
+
 fn main() {
-    println!("Hello, world!");
+    let url = Uri::from_str("https://api.github.com/users/mathieu-pousse/orgs").unwrap();
 
-    let to_guess: i32 = rand::thread_rng().gen_range(1, 101);
-    println!("{}", to_guess);
-    loop {
-        let mut line = String::new();
-        std::io::stdin().read_line(&mut line).expect("bitch");
-        println!("sent: {}", line);
-        let candidate: i32 = match line.trim().parse() {
-            Ok(number) => number,
-            Err(error) => {
-                println!("illegal value {}", error);
-                continue;
-            }
-        };
-        match to_guess.cmp(&candidate) {
-            Ordering::Less => println!("Less"),
-            Ordering::Greater => println!("Greater"),
-            Ordering::Equal => {
-                println!("found {}", to_guess);
-                break;
-            } 
-        }
-    }
+    let mut req = Request::new(Method::Get, url);
 
+    let mut event_loop = Core::new().unwrap();
+    let handle = event_loop.handle();
+    let client = Client::configure()
+        .connector(HttpsConnector::new(4, &handle))
+        .build(&handle);
+
+    req.headers_mut().set(UserAgent::new("my-rust"));
+
+    let work = client.request(req).and_then(|result| {
+
+        let mut body = String::new();
+        result
+            .body()
+            .for_each(move |chunk| io::stdout().write_all(&chunk).map(|_| ()))
+    });
+    let body = event_loop.run(work).unwrap();
+    
 }

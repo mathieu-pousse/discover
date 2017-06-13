@@ -1,0 +1,8 @@
+[package]
+name = "discover"
+version = "0.1.0"
+authors = ["Mathieu POUSSE <m.mathieu.pousse@gmail.com>"]
+
+[dependencies]
+rand = "0.3.14"
+serde_json = "1.0"
